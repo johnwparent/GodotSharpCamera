@@ -1,0 +1,11 @@
+mono*.json
+.import/
+export.cfg
+export_presets.cfg
+.mono/
+mono_crash*
+
+*.xcf
+
+*.odt
+*lock*
