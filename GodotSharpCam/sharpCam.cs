@@ -21,10 +21,10 @@ public class sharpCam : Spatial
     private Godot.Camera cam;
     [Export(PropertyHint.Range,"0.0, 1.0")]
     public float sensitivity = 0.5f;
-    [Export]
+    [Export(PropertyHint.None)]
     private bool enabled = true;
     [Export]
-    private bool pressed = false;
+    private bool press = false;
     [Export]
     private String forward = "wasdForward";
     [Export]
@@ -42,9 +42,9 @@ public class sharpCam : Spatial
     Vector3 direction = new Vector3(0.0f,0.0f,0.0f);
     [Export]
     Vector3 speed = new Vector3(0.0f, 0.0f, 0.0f);
-    [Export]
-    float acceleration = 1.0f;
-    [Export]
+    [Export(PropertyHint.Range,"0.0, 10.0")]
+    float acceleration = 1f;
+    [Export(PropertyHint.Range,"0.0, 10.0")]
     float deceleration = 0.1f;
     [Export]
     Vector3 max_speed = new Vector3(2.0f, 2.0f, 2.0f);
@@ -53,7 +53,7 @@ public class sharpCam : Spatial
     [Export(PropertyHint.Range,"0.0 , 1.0")]
     float smoothness = 0.5f;
     
-    float distance = 5.0f;
+    float distance = 2.5f;
     bool collisions = true;
     int yaw_limit = 360;
     int pitch_limit = 360;
@@ -76,15 +76,11 @@ public class sharpCam : Spatial
  // Called every frame. 'delta' is the elapsed time since the previous frame.
     public override void _Process(float delta)
     {
-      
-        
         updateMouselook();
-        
         updateMovement(delta);
     }
     /// <summary>
     /// An input event handler for the c# camera
-    ///
     /// </summary>
     public override void _Input(InputEvent @event)
     {
@@ -92,10 +88,10 @@ public class sharpCam : Spatial
         
         if(@event is InputEventMouseButton && @event.IsAction("mouseRightClick"))
         {
-            pressed=!pressed;
+            press=!press;
             
         }
-        if(@event is InputEventMouseMotion && pressed)
+        if(@event is InputEventMouseMotion && press)
         {
            
             InputEventMouseMotion _event = (InputEventMouseMotion)@event;
