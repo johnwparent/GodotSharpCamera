@@ -1,4 +1,3 @@
-
 using Godot;
 using System;
 
@@ -7,6 +6,17 @@ public class sharpCam : Spatial
     // Declare member variables here. Examples:
     // private int a = 2;
     // private string b = "text";
+    private struct Pressed
+    {
+       public bool up;
+       public bool down;
+       public bool left;
+       public bool right;
+       public bool forward;
+       public bool back;
+    }
+    
+    Pressed p;
     [Export]
     private Godot.Camera cam;
     [Export(PropertyHint.Range,"0.0, 1.0")]
@@ -59,7 +69,7 @@ public class sharpCam : Spatial
     {
         this.cam = this.GetNode<Godot.Camera>("camobj");
         this.cam.SetCurrent(enabled);
-
+        p = new Pressed();
 
     }
     
@@ -93,44 +103,101 @@ public class sharpCam : Spatial
 
         }
 
-        
+        if(!@event.IsPressed())
+        {
+            
+            switch(@event.AsText())
+            {
+                case "D":
+                    p.right = false;
+                    break;
+                case "E":
+                    p.down = false;
+                    break;
+                case "Q":
+                    p.up = false;
+                    break;
+                case "S":
+                    p.back = false;
+                    break;
+                case "W":
+                    p.forward = false;
+                    break;
+                case "A":
+                    p.left = false;
+                    break;
+                default:
+                    break;
+            }
+        }
         
         if(@event.IsActionPressed("wasdForward"))
         {
             direction.z = -1f;
+            p.forward = true;
         }
         else if(@event.IsActionPressed("wasdBack"))
         {
             direction.z = 1f;
+            p.back = true;
         }
         else if(!@event.IsActionPressed("wasdBack") && !@event.IsActionPressed("wasdForward")&&!@event.IsPressed())
         {
+            if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.forward || p.back)
+            {
+                
+            }
+            else
+            {
+                direction.z = 0f;
+            }
             
-            direction.z = 0f;
         }
         if(@event.IsActionPressed("wasdLeft"))
         {
+            p.left = true;
             direction.x = -1f;
         }
         else if(@event.IsActionPressed("wasdRight"))
         {
+            p.right = true;
             direction.x = 1f;
         }
         else if(!@event.IsActionPressed("wasdLeft") && !@event.IsActionPressed("wasdRight")&&!@event.IsPressed())
         {
-            direction.x = 0f;
+            if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.right || p.left)
+            {
+                
+            }
+            else
+            {
+                direction.x = 0f;
+               
+            }
+            
         }
         if(@event.IsActionPressed("wasdUp"))
         {
             direction.y = 1f;
+            p.up = true;
         }
         else if(@event.IsActionPressed("wasdDown"))
         {
+            p.down = true;
             direction.y = -1f;
         }
         else if(!@event.IsActionPressed("wasdUp") &&!@event.IsActionPressed("wasdDown")&&!@event.IsPressed())
         {
-            direction.y = 0f;   
+            if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.up || p.down)
+            {
+                
+            }
+            else
+            {
+                direction.y = 0f;
+                
+            }
+               
         }
         
     }
