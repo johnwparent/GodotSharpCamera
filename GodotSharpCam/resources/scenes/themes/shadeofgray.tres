@@ -1,0 +1,15 @@
+[gd_resource type="SpatialMaterial" load_steps=2 format=2]
+
+[sub_resource type="GradientTexture" id=1]
+
+[resource]
+flags_vertex_lighting = true
+albedo_color = Color( 0.482353, 0.419608, 0.419608, 1 )
+roughness = 0.5
+roughness_texture = SubResource( 1 )
+roughness_texture_channel = 4
+depth_enabled = true
+depth_scale = 0.05
+depth_deep_parallax = false
+depth_flip_tangent = false
+depth_flip_binormal = false

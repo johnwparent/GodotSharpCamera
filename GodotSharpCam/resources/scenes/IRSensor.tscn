@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://resources/sensors/IR.cs" type="Script" id=1]
+
+[node name="IRSensor" type="Spatial"]
+
+[node name="RayCast" type="RayCast" parent="."]
+enabled = true
+cast_to = Vector3( 0, 0, -1 )
+collide_with_areas = true
+script = ExtResource( 1 )

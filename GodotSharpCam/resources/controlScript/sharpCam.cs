@@ -3,9 +3,7 @@ using System;
 
 public class sharpCam : Spatial
 {
-    // Declare member variables here. Examples:
-    // private int a = 2;
-    // private string b = "text";
+    
     private struct Pressed
     {
        public bool up;
@@ -17,14 +15,43 @@ public class sharpCam : Spatial
     }
     
     Pressed p;
+
+    float distance = 2.5f;
+    bool collisions = true;
+    int yaw_limit = 360;
+    int pitch_limit = 360;
+
+    float _yaw = 0.0f;
+    float _pitch = 0.0f;
+    float _total_yaw = 0.0f;
+    float _total_pitch = 0.0f;
+    Vector2 mousePosition = new Vector2(0.0f,0.0f);
+    
+    //Exported editor accessible variables
     [Export]
     private Godot.Camera cam;
+
+    [Export(PropertyHint.Range,"0.0 , 1.0")]
+    float smoothness = 0.5f;
+
     [Export(PropertyHint.Range,"0.0, 1.0")]
     public float sensitivity = 0.5f;
-    [Export(PropertyHint.None)]
+
+    [Export(PropertyHint.Range,"0.0, 10.0")]
+    float acceleration = 1f;
+
+    [Export(PropertyHint.Range,"0.0, 10.0")]
+    float deceleration = 0.1f;
+
+    [Export]
     private bool enabled = true;
+
     [Export]
     private bool press = false;
+
+    [Export]
+    private bool local = true;
+
     [Export]
     private String forward = "wasdForward";
     [Export]
@@ -40,31 +67,16 @@ public class sharpCam : Spatial
 
     [Export]
     Vector3 direction = new Vector3(0.0f,0.0f,0.0f);
+
     [Export]
     Vector3 speed = new Vector3(0.0f, 0.0f, 0.0f);
-    [Export(PropertyHint.Range,"0.0, 10.0")]
-    float acceleration = 1f;
-    [Export(PropertyHint.Range,"0.0, 10.0")]
-    float deceleration = 0.1f;
+
     [Export]
     Vector3 max_speed = new Vector3(2.0f, 2.0f, 2.0f);
-    [Export]
-    private bool local = true;
-    [Export(PropertyHint.Range,"0.0 , 1.0")]
-    float smoothness = 0.5f;
     
-    float distance = 2.5f;
-    bool collisions = true;
-    int yaw_limit = 360;
-    int pitch_limit = 360;
-
-    float _yaw = 0.0f;
-    float _pitch = 0.0f;
-    float _total_yaw = 0.0f;
-    float _total_pitch = 0.0f;
-    Vector2 mousePosition = new Vector2(0.0f,0.0f);
-
-    // Called when the node enters the scene tree for the first time.
+    /// <summary>
+    /// Called when the node enters the scene tree for the first time.
+    /// </summary>
     public override void _Ready()
     {
         this.cam = this.GetNode<Godot.Camera>("camobj");
@@ -72,8 +84,9 @@ public class sharpCam : Spatial
         p = new Pressed();
 
     }
-    
- // Called every frame. 'delta' is the elapsed time since the previous frame.
+    /// <summary>
+    /// Called every frame. 'delta' is the elapsed time since the previous frame.
+    /// </summary>
     public override void _Process(float delta)
     {
         updateMouselook();

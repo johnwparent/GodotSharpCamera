@@ -51,6 +51,9 @@
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="resources\controlScript\sharpCam.cs" />
+    <Compile Include="resources\sensors\Cam.cs" />
+    <Compile Include="resources\sensors\IR.cs" />
+    <Compile Include="resources\sensors\LIDAR.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>
