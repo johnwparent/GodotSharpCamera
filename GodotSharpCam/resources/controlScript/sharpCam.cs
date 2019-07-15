@@ -53,17 +53,17 @@ public class sharpCam : Spatial
     private bool local = true;
 
     [Export]
-    private String forward = "wasdForward";
+    private String forward = "editor_forward";
     [Export]
-    private String back = "wasdBack";
+    private String back = "editor_back";
     [Export]
-    private String left = "wasdLeft";
+    private String left = "editor_left";
     [Export]
-    private String right = "wasdRight";
+    private String right = "editor_right";
     [Export]
-    private String up = "wasdUp";
+    private String up = "editor_up";
     [Export]
-    private String down = "wasdDown";
+    private String down = "editor_down";
 
     [Export]
     Vector3 direction = new Vector3(0.0f,0.0f,0.0f);
@@ -120,10 +120,10 @@ public class sharpCam : Spatial
                 case "D":
                     p.right = false;
                     break;
-                case "E":
+                case "Q":
                     p.down = false;
                     break;
-                case "Q":
+                case "E":
                     p.up = false;
                     break;
                 case "S":
@@ -140,17 +140,17 @@ public class sharpCam : Spatial
             }
         }
         
-        if(@event.IsActionPressed("wasdForward"))
+        if(@event.IsActionPressed(forward))
         {
             direction.z = -1f;
             p.forward = true;
         }
-        else if(@event.IsActionPressed("wasdBack"))
+        else if(@event.IsActionPressed(back))
         {
             direction.z = 1f;
             p.back = true;
         }
-        else if(!@event.IsActionPressed("wasdBack") && !@event.IsActionPressed("wasdForward")&&!@event.IsPressed())
+        else if(!@event.IsActionPressed(back) && !@event.IsActionPressed(forward)&&!@event.IsPressed())
         {
             if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.forward || p.back)
             {
@@ -162,17 +162,17 @@ public class sharpCam : Spatial
             }
             
         }
-        if(@event.IsActionPressed("wasdLeft"))
+        if(@event.IsActionPressed(left))
         {
             p.left = true;
             direction.x = -1f;
         }
-        else if(@event.IsActionPressed("wasdRight"))
+        else if(@event.IsActionPressed(right))
         {
             p.right = true;
             direction.x = 1f;
         }
-        else if(!@event.IsActionPressed("wasdLeft") && !@event.IsActionPressed("wasdRight")&&!@event.IsPressed())
+        else if(!@event.IsActionPressed(left) && !@event.IsActionPressed(right)&&!@event.IsPressed())
         {
             if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.right || p.left)
             {
@@ -185,17 +185,17 @@ public class sharpCam : Spatial
             }
             
         }
-        if(@event.IsActionPressed("wasdUp"))
+        if(@event.IsActionPressed(up))
         {
             direction.y = 1f;
             p.up = true;
         }
-        else if(@event.IsActionPressed("wasdDown"))
+        else if(@event.IsActionPressed(down))
         {
             p.down = true;
             direction.y = -1f;
         }
-        else if(!@event.IsActionPressed("wasdUp") &&!@event.IsActionPressed("wasdDown")&&!@event.IsPressed())
+        else if(!@event.IsActionPressed(up) &&!@event.IsActionPressed(down)&&!@event.IsPressed())
         {
             if(@event is InputEventMouseMotion || @event is InputEventMouseButton || p.up || p.down)
             {

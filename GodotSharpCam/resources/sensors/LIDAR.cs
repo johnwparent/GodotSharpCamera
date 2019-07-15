@@ -1,13 +1,23 @@
 using Godot;
 using System;
-
+using System.Threading;
+using System.Threading.Tasks;
 
     public class LIDAR : Spatial
     {
         // Declare member variables here. Examples:
         // private int a = 2;
         // private string b = "text";
+        public struct GOBeamData
+        {
+
+
+        }
+        static readonly object locker = new object();
+
+        
         bool first = true;
+        RayCast cast;
         double _minAng;
         double _maxAng;
         float _resolution;
@@ -17,6 +27,10 @@ using System;
         bool interpolation;
         int refresh;
         float maxLR;
+        float space;
+        double _maxDegree;
+        double _minDegree;
+        String or;
         Godot.Collections.Array pointCloud;
         Godot.Collections.Array distCloud;
         File resultPCD;
@@ -63,99 +77,110 @@ using System;
             
             this._minAng = -0.53529248;
             this._maxAng = 0.18622663;
+            this._maxDegree = (180/Mathf.Pi)*_maxAng;
+            this._minDegree = (180/Mathf.Pi)*_minAng;
             this._resolution = 1f;
-            this._beamNum = 64;
+            this._beamNum = 32;
             this._beamMax = 100;
             this.Translation = this.Translation;
-            this.maxLR = 2;
+            this.maxLR = 100;
             this.dataSampleSize = 100;
+            cast = (Godot.RayCast)this.GetChild(0);
+            this.Rotate(Vector3.Left,maxLR);
+            this.Rotate(Vector3.Down,(float)_maxAng);
+
+            String orientation = "lr";
+            if(Mathf.Abs((float)_maxDegree)+Mathf.Abs((float)_minDegree)>maxLR)
+            {
+                orientation = "ud";
+
+
+            }
+            //if beams need to be horizontal, spacing is determine by splitting the vertical fov
+            //if beams are vertiacal, split horizontal fov
+            switch(orientation)
+            {
+                case "lr":
+                    this.space = spacing(maxLR);
+                    this.or = "lr";
+                    break;
+                default:
+                    this.space = spacing(Mathf.Abs((float)_maxDegree)+Mathf.Abs((float)_minDegree));
+                    this.or = "ud";
+                    break;
+            }
+
+
+            for(int j = 0;j<_beamNum;j++)
+            {
+                Spatial beam = new Spatial();
+                beam.AddToGroup("beams");
+                beam.Rotate(Vector3.Up,(float)(this.space*j));
+                for(int i = 1;i<5;i++)
+                {
+                    RayCast tmp = (RayCast)cast.Duplicate();
+                    beam.AddChild(tmp);
+                    tmp.Rotate(Vector3.Down,(float)(this.space/5)*i);
+                }
+                this.AddChild(beam);
+            }
+            
+            
             
         }
 
         /// <summary>
-        /// Is called by the main process 60x per second, calls the LIDAR detector to collect data, and then resets the LIDAR's oritentation
+        /// Is called by the main process 60x per second, but varies based on framerate, calls the LIDAR detector to collect data, and then resets the LIDAR's oritentation
         /// </summary>
-        public override void _PhysicsProcess(float delta)
+        public override void _Process(float delta)
         {
             if(this.first)
             {
                 GD.Print("hello");
                 WriteHeader();
             }
-            
-            LIDAR_DRIVER();
-            
-            this.first = false;
-            Godot.Collections.Array cams = GetTree().GetNodesInGroup("liCams");
-            foreach(Camera Cam in cams)
+            switch(or)
             {
-                Cam.Orthonormalize();
+                case "lr":
+                    this.RotateObjectLocal(new Vector3(0,1,0),maxLR/1800);
+                    break;
+                default:
+                    this.RotateObjectLocal(Vector3.Right,(float)(_maxDegree+_minDegree)/1800);
+                    break;
             }
-            
+            LIDAR_DRIVER();
+            writeFile();
+            this.pointCloud.Clear();
+            this.first = false;          
         }
         /// <summary>
         /// Drives the LIDAR process, writes to file, closes file, handles interpolation logic and  LIDAR camera movement control
         /// </summary>
         public void LIDAR_DRIVER()
         {
-            Godot.Collections.Array gridSpace = gridding();
-            for (int i = 0; i < gridSpace.Count; i++)
-            {
-                var j = gridSpace[i];
-                GD.Print(j);
+            foreach(Spatial b in GetTree().GetNodesInGroup("beams"))
+            {               
+                GO(b);
             }
-            GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Left,maxLR});
-            GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Up,_maxAng});
-            string largerSide = (string)gridSpace[3];
-            int topside=0;
-            int sideSide=0;
-
-            switch(largerSide)
+        }
+        void GO(Spatial beam)
+        {
+            foreach(RayCast r in beam.GetChildren())
             {
-                case "lr":
-                    sideSide = (int)gridSpace[1];
-                    topside = (int)gridSpace[2];
-                    break;
-                case "ud":
-                    sideSide = (int)gridSpace[2];
-                    topside = (int)gridSpace[1];
-                    break;
-                default:
-                    break;
-            }
-
-            for(int i=0;i<topside;i++)
-            {
-                if(i>0)
+                var dir = -GlobalTransform.basis.z;
+                r.SetCastTo(dir*100);
+                r.Enabled = true;
+                r.ForceRaycastUpdate();
+                if(r.Enabled && r.IsColliding())
                 {
-                    camResetTop();
+                    pointCloud.Add(r.GetCollisionPoint());
+                    //distCloud.Add(this.Translation.DistanceTo(r.GetCollisionPoint()));
                 }
-                for(int j=0;j<sideSide;j++)
-                {
-                    var result = imaging();
-                    GD.Print("arg");
-                    if(!result.Equals(new Vector3(0,0,0)))
-                    {
-                        GD.Print(1);
-                        var collisionLoc = result;
-                        float collisionDist = distancing(result);
-                        pointCloud.Add(collisionLoc);
-                        distCloud.Add(collisionDist);
-
-                    }
-                    camMovement((float)gridSpace[0],"down");
-
-                }
-                camMovement((float)gridSpace[0],"left");
             }
-
-            if(_resolution<1)
-            {
-                interp();
-            }
-            
-            writeFile();
-
+        }
+        private float spacing(float fov)
+        {
+           return fov/_beamNum;
         }
         private void WriteHeader()
         {
@@ -171,82 +196,25 @@ using System;
             resultPCD.StoreLine("DATA ascii");
             
         }
-        private void camResetTop()
-        {
-            GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Up,_maxAng});
-        }
-        //responsible for camera panning
-        private void camMovement(float dist, string dir)
-        {
-            switch(dir)
-            {
-                case "up":
-                    GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Up,dist});
-                    break;
-                case "down":
-                    GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Down,dist});
-                    break;
-                case "left":
-                    GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Left,dist});
-                    break;
-                case "right":
-                    GetTree().CallGroup("liCams","RotateObjectLocal",new Godot.Collections.Array{Vector3.Right,dist});
-                    break;
-                default:
-                    break;
-            }
-
-        }
         //responsible for actually taking the raycast and returning the collision data
-        private Vector3 imaging()
+        private Vector3 imaging(RayCast r)
         {
-            
-            
             var dir = -GlobalTransform.basis.z;
             
-            var ray = (RayCast)GetNode("RayCast");
-            ray.SetCastTo(dir*100);
-            GD.Print(ray.GetCastTo());
-            GD.Print(ray.GetParent());
-            ray.Enabled = true;
-            ray.ForceRaycastUpdate();
-            if(ray.Enabled && ray.IsColliding())
+            r.SetCastTo(dir*100);
+            r.Enabled = true;
+            r.ForceRaycastUpdate();
+            if(r.Enabled && r.IsColliding())
             {
-                return ray.GetCollisionPoint();
+                return r.GetCollisionPoint();
 
             }
-            
-            
             return new Vector3(0,0,0);
         }
 
         private float distancing(Vector3 collisionLocation)
         {   
             return this.Translation.DistanceTo(collisionLocation);
-        }
-
-        //divides the fov of the LIDAR sensor into sectors in order to take the correct number of points as per
-        //user specifications, returns number of data samples needed to be produced, ie, how often we need to raycast
-        //returns camera jump distance in Return[0],number samples needed on larger side in Return[1], and number of samples on smaller side in Return[2]
-        private Godot.Collections.Array gridding()
-        {
-            double totalRads = maxLR + _maxAng + _minAng;
-            double spacing = totalRads/dataSampleSize;
-            string larger;
-            double largerDim = Math.Max(maxLR,(_maxAng+_minAng));
-            if(largerDim.Equals(maxLR))
-            {
-                larger = "lr";
-            }
-            else{
-                larger = "ud";
-            }
-            double largerRatio = largerDim/spacing;
-            int numOnLarger = (int)(largerDim/(largerRatio+1));
-            int numOnSmaller = (int)dataSampleSize - numOnLarger;
-            GD.Print("NUMBERS:::::" +" "+numOnLarger+" "+ spacing+ " "+largerDim);
-                    
-            return new Godot.Collections.Array{largerRatio,numOnLarger,numOnSmaller,larger};
         }
         //handles interpolation
         private void interp()
@@ -288,7 +256,6 @@ using System;
             }
 
         }
-
         //handles actually writing to the file with the data from the class variable array set aside for temporarily storing this data
         private void writeFile()
         {
@@ -305,9 +272,4 @@ using System;
         {
             resultPCD.Close();
         }
-    //  // Called every frame. 'delta' is the elapsed time since the previous frame.
-    //  public override void _Process(float delta)
-    //  {
-    //      
-    //  }
     }
