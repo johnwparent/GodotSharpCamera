@@ -19,6 +19,10 @@ config/name="SharpCam"
 run/main_scene="res://resources/scenes/testEnv.tscn"
 config/icon="res://resources/scenes/icon.png"
 
+[autoload]
+
+PCLoad="*res://resources/controlScript/PCLoad.cs"
+
 [input]
 
 ui_left={

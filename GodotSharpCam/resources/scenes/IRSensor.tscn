@@ -9,3 +9,5 @@ enabled = true
 cast_to = Vector3( 0, 0, -1 )
 collide_with_areas = true
 script = ExtResource( 1 )
+
+[node name="path" type="ImmediateGeometry" parent="RayCast"]

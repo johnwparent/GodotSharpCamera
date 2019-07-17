@@ -82,7 +82,6 @@ public class sharpCam : Spatial
         this.cam = this.GetNode<Godot.Camera>("camobj");
         this.cam.SetCurrent(enabled);
         p = new Pressed();
-
     }
     /// <summary>
     /// Called every frame. 'delta' is the elapsed time since the previous frame.

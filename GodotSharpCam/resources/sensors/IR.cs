@@ -11,7 +11,7 @@ using System;
         float fov = 0.10F;
         Array distances;
 
-        
+        Vector3 lastC;
 
         float maxDist;
         float minDist;
@@ -39,40 +39,21 @@ using System;
             //for now, and json will be written to a local repository so we can verify information.
             this.saveData = new File();
             saveData.Open("c://Users/John Parent/Dropbox/a/saveData.json", (int)File.ModeFlags.Write);
-
-            var dir = -GlobalTransform.basis.z;
-            GD.Print(dir);
-            this.SetCastTo(dir*100);
-            GD.Print(this.GetCastTo());
-            this.Enabled = true;
-            this.ForceRaycastUpdate();
             saveData.StoreLine("hello world");
-            
-            if(this.Enabled && this.IsColliding())
-            {
-                GD.Print("ye");
-                saveData.StoreLine(JSON.Print(this.GetCollisionPoint()));
-
-            }
-        
-            
-            saveData.Close();
-            this.Enabled = false;
         }
 
         // Called every frame. 'delta' is the elapsed time since the previous frame.
-        // public override void _Process(float delta)
-        // {
-        //     this.SetCurrent(true);
-        //     saveData.Open("user://savegame.save", (int)File.ModeFlags.Write);
+        public override void _Process(float delta)
+        {
+            var n = GetNode<ImmediateGeometry>("path");
+            n.Clear();
+            n.Begin(Mesh.PrimitiveType.Lines,null);
+            n.AddVertex(this.GetTranslation());
+            n.AddVertex(lastC);
+            n.End();
 
 
-
-
-
-        //     saveData.Close();
-        //     this.SetCurrent(false);
-        // }
+        }
 
         /// <summary>
         /// Called 60x per second by main, sends out raycast to simulate IR sensor,
@@ -82,23 +63,16 @@ using System;
         {
             
             var dir = -GlobalTransform.basis.z;
-            GD.Print(dir);
+            //GD.Print(dir);
             this.SetCastTo(dir*100);
-            GD.Print(this.GetCastTo());
+            //GD.Print(this.GetCastTo());
             this.Enabled = true;
             this.ForceRaycastUpdate();
-            
-            
             if(this.Enabled && this.IsColliding())
             {
-                
+                lastC = this.GetCollisionPoint();
                 saveData.StoreLine(JSON.Print(this.GetCollisionPoint()));
-
             }
-        
-            
-            saveData.Close();
-            this.Enabled = false;
         }
         /// <summary>
         /// Turns off raycaster when sensor data is no longer needed
@@ -107,6 +81,6 @@ using System;
         {
             var ray = (RayCast)this;
             ray.Enabled = false;
-            
+            saveData.Close();
         }
     }
