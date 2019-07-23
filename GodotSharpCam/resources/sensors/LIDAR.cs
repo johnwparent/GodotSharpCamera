@@ -14,8 +14,8 @@ using System.Threading.Tasks;
 
         }
         static readonly object locker = new object();
-
-        
+        PCLoad server;
+        ImmediateGeometry im;
         bool first = true;
         RayCast cast;
         double _minAng;
@@ -34,6 +34,8 @@ using System.Threading.Tasks;
         Godot.Collections.Array pointCloud;
         Godot.Collections.Array distCloud;
         File resultPCD;
+
+        int INTR_CTR = 0;
         // Called when the node enters the scene tree for the first time.
         
         //Empty constructor to silence godot errors
@@ -72,8 +74,8 @@ using System.Threading.Tasks;
             pointCloud = new Godot.Collections.Array();
             resultPCD = new File();
             
-            resultPCD.Open("c://Users/John Parent/Dropbox/a/pc.json", (int)File.ModeFlags.Write);
-            
+            resultPCD.Open("c://Users/John Parent/Dropbox/a/pc.xyz", (int)File.ModeFlags.Write);
+            this.server = (PCLoad)GetNode("/root/PCLoad");
             
             this._minAng = -0.53529248;
             this._maxAng = 0.18622663;
@@ -83,75 +85,55 @@ using System.Threading.Tasks;
             this._beamNum = 32;
             this._beamMax = 100;
             this.Translation = this.Translation;
-            this.maxLR = 100;
-            this.dataSampleSize = 100;
-            cast = (Godot.RayCast)this.GetChild(0);
-            this.Rotate(Vector3.Left,maxLR);
-            this.Rotate(Vector3.Down,(float)_maxAng);
+            this.maxLR = 360;
+            this.dataSampleSize = 100;            
+            this.space = spacing(Mathf.Abs((float)this._minAng)+(float)this._maxAng);
+            this.Rotate(Vector3.Down,this.space*_beamNum);
+            this.cast = (RayCast)GetNode("RayCast");
 
-            String orientation = "lr";
-            if(Mathf.Abs((float)_maxDegree)+Mathf.Abs((float)_minDegree)>maxLR)
-            {
-                orientation = "ud";
-
-
-            }
-            //if beams need to be horizontal, spacing is determine by splitting the vertical fov
-            //if beams are vertiacal, split horizontal fov
-            switch(orientation)
-            {
-                case "lr":
-                    this.space = spacing(maxLR);
-                    this.or = "lr";
-                    break;
-                default:
-                    this.space = spacing(Mathf.Abs((float)_maxDegree)+Mathf.Abs((float)_minDegree));
-                    this.or = "ud";
-                    break;
-            }
-
-
-            for(int j = 0;j<_beamNum;j++)
+            for(int j = 0;j<this._beamNum;j++)
             {
                 Spatial beam = new Spatial();
                 beam.AddToGroup("beams");
-                beam.Rotate(Vector3.Up,(float)(this.space*j));
-                for(int i = 1;i<5;i++)
+                this.AddChild(beam);
+                beam.Rotate(new Vector3(1,0,0),(float)(this.space*j));
+                //GD.Print(beam.GetRotationDegrees().x+" "+ beam.GetRotationDegrees().y);
+                for(int i = 1;i<6;i++)
                 {
                     RayCast tmp = (RayCast)cast.Duplicate();
                     beam.AddChild(tmp);
-                    tmp.Rotate(Vector3.Down,(float)(this.space/5)*i);
+                    tmp.Rotate(new Vector3(1,0,0),(float)(this.space/5)*i);
                 }
-                this.AddChild(beam);
+                
+                
             }
-            
-            
-            
         }
 
         /// <summary>
         /// Is called by the main process 60x per second, but varies based on framerate, calls the LIDAR detector to collect data, and then resets the LIDAR's oritentation
         /// </summary>
-        public override void _Process(float delta)
+        public override void _PhysicsProcess(float delta)
         {
+            
             if(this.first)
             {
-                GD.Print("hello");
-                WriteHeader();
+                this.im = new ImmediateGeometry();
+                AddChild(this.im);
+                this.im.Clear();
+                this.server._PointCloudServerEnable();
+                //this.server.Exec();
+                GD.Print("hello, LIDAR is enabled and scanning");
+                //WriteHeader();
             }
-            switch(or)
+            this.Rotate(new Vector3(0,1,0),0.0174533f);
+            if(INTR_CTR%12==0)
             {
-                case "lr":
-                    this.RotateObjectLocal(new Vector3(0,1,0),maxLR/1800);
-                    break;
-                default:
-                    this.RotateObjectLocal(Vector3.Right,(float)(_maxDegree+_minDegree)/1800);
-                    break;
+                INTR_CTR = 0;
+                this.im.Clear();
             }
             LIDAR_DRIVER();
-            writeFile();
-            this.pointCloud.Clear();
-            this.first = false;          
+            this.first = false;  
+            INTR_CTR++;
         }
         /// <summary>
         /// Drives the LIDAR process, writes to file, closes file, handles interpolation logic and  LIDAR camera movement control
@@ -161,22 +143,42 @@ using System.Threading.Tasks;
             foreach(Spatial b in GetTree().GetNodesInGroup("beams"))
             {               
                 GO(b);
+                
+                this.im.Begin(Mesh.PrimitiveType.Lines);
+                this.im.AddVertex(b.GetTranslation());
+                var dir = -b.GetChild<RayCast>(0).GlobalTransform.basis.z;
+                b.GetChild<RayCast>(0).SetCastTo(dir*100);
+                this.im.AddVertex(b.GetChild<RayCast>(0).GetCastTo());
+                this.im.End();
             }
         }
         void GO(Spatial beam)
         {
             foreach(RayCast r in beam.GetChildren())
             {
-                var dir = -GlobalTransform.basis.z;
+                var dir = -r.GlobalTransform.basis.z;
+                //GD.Print(dir.x + " " + dir.y + " " + dir.z);
                 r.SetCastTo(dir*100);
+                r.SetCollideWithAreas(true);
+                r.SetCollideWithBodies(true);
                 r.Enabled = true;
+
                 r.ForceRaycastUpdate();
-                if(r.Enabled && r.IsColliding())
+                // GD.Print(r.GetCastTo());
+                
+                if(r.IsColliding())
                 {
-                    pointCloud.Add(r.GetCollisionPoint());
+                    //GD.Print("Collision Detected at: "+ r.GetCollisionPoint());
+                    //pointCloud.Add(r.GetCollisionPoint());
+                    //GD.Print("x");
+                    this.server._LiveUpdates(r.GetCollisionPoint(),r.GetCollisionPoint());
+                    resultPCD.StoreLine(r.GetCollisionPoint().x + " " + r.GetCollisionPoint().y + " " + r.GetCollisionPoint().z);
                     //distCloud.Add(this.Translation.DistanceTo(r.GetCollisionPoint()));
                 }
+                
+                
             }
+            
         }
         private float spacing(float fov)
         {
@@ -196,75 +198,12 @@ using System.Threading.Tasks;
             resultPCD.StoreLine("DATA ascii");
             
         }
-        //responsible for actually taking the raycast and returning the collision data
-        private Vector3 imaging(RayCast r)
-        {
-            var dir = -GlobalTransform.basis.z;
-            
-            r.SetCastTo(dir*100);
-            r.Enabled = true;
-            r.ForceRaycastUpdate();
-            if(r.Enabled && r.IsColliding())
-            {
-                return r.GetCollisionPoint();
-
-            }
-            return new Vector3(0,0,0);
-        }
 
         private float distancing(Vector3 collisionLocation)
         {   
             return this.Translation.DistanceTo(collisionLocation);
         }
-        //handles interpolation
-        private void interp()
-        {
-            int numOfInterp = _beamNum-(int)dataSampleSize;
-            int dataRatio = pointCloud.Count/numOfInterp;
-            int interps=0;
-            int itr = 0;
-            while(interps<numOfInterp)
-            {
-                Vector3 node1 = (Vector3)pointCloud[itr];
-                Vector3 node2 = (Vector3)pointCloud[itr+1];
-                if(node1.DistanceTo(node2) < 1)
-                {
-                    float dist1 = (float)distCloud[itr];
-                    float dist2 = (float)distCloud[itr+1];
-                    if(Math.Abs(dist1-dist2)<2)
-                    {   
-                        float x = (node1.x+node2.x)/2;
-                        float y = (node1.y + node2.y)/2;
-                        float z = (node1.z + node2.z)/2;
-                        pointCloud.Add(new Vector3(x,y,z));
-                        distCloud.Add(distancing(new Vector3(x,y,z)));
-                        interps++;
-                        itr += dataRatio;
-                    }
-                    else{
-                        itr++;
-                    }
-                }
-                else{
-                    itr++;
-                }
-
-                if(itr >= pointCloud.Count-1+dataRatio)
-                {
-                    itr = 0;
-                }
-            }
-
-        }
-        //handles actually writing to the file with the data from the class variable array set aside for temporarily storing this data
-        private void writeFile()
-        {
-            
-            foreach(Vector3 xyz in pointCloud)
-            {
-                resultPCD.StoreLine((JSON.Print(xyz.x + " " +xyz.y + " " +xyz.z )));
-            }
-        }
+        
         /// <summary>
         /// when LIDAR exits and data is no longer needed the file written to is closed
         /// </summary>

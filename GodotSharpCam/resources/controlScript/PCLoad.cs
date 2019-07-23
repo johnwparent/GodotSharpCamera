@@ -3,66 +3,47 @@ using System;
 using System.Collections;
 using System.Threading;
 using System.Threading.Tasks;
+
+///<summary>
+///A server class to send lidar data as a stream to localhost
+///</summary>
 public class PCLoad : Godot.Node
 {
-    [Signal]
-    public delegate void StartPCV();
-    Hashtable pointCloud;    
-    WindowDialog Pop;
-    Viewport v;
-    Node pc;
-    Spatial space;
-    public override void _Ready()
-    {
-        pc = GetNode("/root");
-        this.Pop = new WindowDialog();
-        this.v = new Viewport();
-        this.v.OwnWorld = true;
-        this.v.UpdateWorlds();
-        PackedScene sharpCam = (PackedScene)GD.Load("res://resources/scenes/sharpCam.tscn");
-        Node camChild = sharpCam.Instance();
-        ViewportContainer vc = new ViewportContainer();
-        this.space = new Spatial();
-        Task t1 = Task.Factory.StartNew(()=>{space.AddChild(new OmniLight());});
-        Task t = Task.Factory.StartNew(()=>{space.AddChild(camChild);});
-        Task t2 = Task.Factory.StartNew(()=>{this.v.AddChild(space);});
-        Task t3 = Task.Factory.StartNew(()=>{vc.AddChild(this.v);});
-        this.Pop.AddChild(vc);
-        this.Pop.Connect("tree_entered",this,"_PointCloudOn");
-        GetTree().GetRoot().Connect("ready",this,"addToTree");        
-        t.Wait();
-        t2.Wait();
-        t3.Wait();
-    }
 
-    public void _PointCloudOn()
-    {
-        GD.Print("sjdhas");
-        GD.Print(this.Pop.GetChildCount());
-        this.Pop.SetCustomMinimumSize(new Vector2(10,10));
-        this.Pop.SetResizable(true);
-        this.Pop.ShowOnTop = true;
-        this.Pop.PopupCentered();
+    public PacketPeerUDP stream {get; set;}
+    
+    public override void _Ready()
+    {        
+        //Signal setup should be handled via the lidar script
     }
-    public bool _LiveUpdates(Vector3 pt,Vector3 dp)
+    ///<summary>
+    ///Starts the stream of LIDAR data
+    ///Only to be called by a signal from the LIDAR _Ready() function
+    ///</summary>
+    public void _PointCloudServerEnable()
     {
-       if(!pointCloud.ContainsKey(pt))
-       {
-           pointCloud.Add(pt,dp);
-           ImmediateGeometry im = new ImmediateGeometry();
-           var m = new SpatialMaterial();
-           im.SetMaterialOverride(m);
-           im.Clear();
-           im.Begin(Godot.Mesh.PrimitiveType.Points);
-           im.AddVertex(pt);
-           im.End();
-           return true;
-       }       
-        return false;
+        this.stream = new PacketPeerUDP();
+        if(this.stream.SetDestAddress("127.0.0.1",42561)!=Error.Ok)
+        {
+            GD.PrintErr(this.stream.SetDestAddress("127.0.0.1",42561)!=Error.Ok);
+        }        
     }
-    public void addToTree()
+    ///<summary>
+    ///Pushes the Lidar data to the stream
+    ///</summary>
+    public void _LiveUpdates(Vector3 pt,Vector3 dp)
     {
-        GD.Print("Root ready");
-        GetTree().GetRoot().GetNode("/root/testEnv/Control").AddChild(this.Pop);
+        this.stream.PutVar(pt);
+        
+    }
+    ///<summary>
+    ///Executes the godot executables that reads off the stream and produces LIDAR point clouds as a mesh
+    ///</summary>
+    public void Exec()
+    {
+        String[] p = new String[]{"--path C:/pointCloud/pointCloud.exe","--main-pck C:/pointCloud/pointCloud.pck"};
+        OS.Execute("C:/pointCloud/pointCloud.exe",p,false);
+        GD.Print(OS.GetExecutablePath());
+        
     }
 }
