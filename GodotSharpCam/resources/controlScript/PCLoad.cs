@@ -1,8 +1,7 @@
 using Godot;
 using System;
-using System.Collections;
-using System.Threading;
-using System.Threading.Tasks;
+using System.IO;
+using System.IO.Pipes;
 
 ///<summary>
 ///A server class to send lidar data as a stream to localhost
@@ -10,11 +9,12 @@ using System.Threading.Tasks;
 public class PCLoad : Godot.Node
 {
 
-    public PacketPeerUDP stream {get; set;}
+    public NamedPipeServerStream stream {get; set;}
     
     public override void _Ready()
     {        
         //Signal setup should be handled via the lidar script
+        this.stream = new NamedPipeServerStream("LIO",PipeDirection.Out);
     }
     ///<summary>
     ///Starts the stream of LIDAR data
@@ -22,18 +22,25 @@ public class PCLoad : Godot.Node
     ///</summary>
     public void _PointCloudServerEnable()
     {
-        this.stream = new PacketPeerUDP();
-        if(this.stream.SetDestAddress("127.0.0.1",42561)!=Error.Ok)
-        {
-            GD.PrintErr(this.stream.SetDestAddress("127.0.0.1",42561)!=Error.Ok);
-        }        
+            this.stream.WaitForConnection();
+            GD.Print("Client connected to server pipe");
     }
     ///<summary>
     ///Pushes the Lidar data to the stream
     ///</summary>
     public void _LiveUpdates(Vector3 pt,Vector3 dp)
     {
-        this.stream.PutVar(pt);
+         try
+            {
+                using(StreamWriter sw = new StreamWriter(this.stream))
+                {
+                    sw.WriteLine(pt);
+                }
+            }
+            catch(Exception e)
+            {
+                GD.PrintErr(e);
+            }
         
     }
     ///<summary>

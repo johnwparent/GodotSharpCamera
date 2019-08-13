@@ -1,23 +1,20 @@
 using Godot;
 using System;
-
+using System.IO;
+using System.IO.Pipes;
 public class cloud : Spatial
 {
     // Declare member variables here. Examples:
     // private int a = 2;
     // private string b = "text";
-    PacketPeerUDP stream;
+    NamedPipeClientStream stream;
     // Called when the node enters the scene tree for the first time.
     ///<summary>
     ///Establishes the input stream to generate the cloud from
     ///</summary>
     public override void _Ready()
     {
-        this.stream = new PacketPeerUDP();
-        if(this.stream.Listen(42561,"127.0.0.1")!=Error.Ok)
-        {
-            GD.PrintErr(this.stream.Listen(42561,"127.0.0.1"));
-        }
+        this.stream = new NamedPipeClientStream("LIO");
         GD.Print("LIDAR RENDER: READY");
         
     }
@@ -40,23 +37,22 @@ public class cloud : Spatial
         // }
         
         try
-        {
-            var data = (Error)this.stream.GetVar();
-            GD.Print("Unable to aquire data, buffer overrun, or no packets");
-        }
-        catch(Exception e)
-        {
-            GD.Print("No Errors");
-        }
-        try
-        {
-            var data = this.stream.GetVar();
-            GD.Print((Vector3)data);
-        }
-        catch(Exception e)
-        {
-            GD.Print("No data");
-        }        
+            {
+                using (StreamReader sr = new StreamReader(this.stream))
+                {
+                    String tmp = "";
+                    while((tmp = sr.ReadLine())!=null)
+                    {
+                        //get the command, command args, and RID from the stream
+                        //will need some string parsing
+                        //call the command w/ the args on the given root node, or whatever given RID
+                    }
+                }
+            }
+            catch(Exception e)
+            {
+                GD.PrintErr(e);
+            }
         GD.Print("Exit _Process");
     }
 }

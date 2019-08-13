@@ -2,6 +2,8 @@ using Godot;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
+using System.IO.Pipes;
 
     public class LIDAR : Spatial
     {
@@ -33,7 +35,7 @@ using System.Threading.Tasks;
         String or;
         Godot.Collections.Array pointCloud;
         Godot.Collections.Array distCloud;
-        File resultPCD;
+        Godot.File resultPCD;
 
         int INTR_CTR = 0;
         // Called when the node enters the scene tree for the first time.
@@ -72,9 +74,10 @@ using System.Threading.Tasks;
         {
             
             pointCloud = new Godot.Collections.Array();
-            resultPCD = new File();
+            //needs to be rewritten to send a pipe to RR
+            resultPCD = new Godot.File();
             
-            resultPCD.Open("c://Users/John Parent/Dropbox/a/pc.xyz", (int)File.ModeFlags.Write);
+            resultPCD.Open("c://Users/John Parent/Dropbox/a/pc.xyz", (int)Godot.File.ModeFlags.Write);
             this.server = (PCLoad)GetNode("/root/PCLoad");
             
             this._minAng = -0.53529248;
@@ -120,9 +123,11 @@ using System.Threading.Tasks;
                 this.im = new ImmediateGeometry();
                 AddChild(this.im);
                 this.im.Clear();
+
                 this.server._PointCloudServerEnable();
+                //thread the call to execute the visualizer, so we dont run into a deadlock
                 //this.server.Exec();
-                GD.Print("hello, LIDAR is enabled and scanning");
+                GD.Print("LIDAR is enabled and scanning");
                 //WriteHeader();
             }
             this.Rotate(new Vector3(0,1,0),0.0174533f);
@@ -172,7 +177,7 @@ using System.Threading.Tasks;
                     //pointCloud.Add(r.GetCollisionPoint());
                     //GD.Print("x");
                     this.server._LiveUpdates(r.GetCollisionPoint(),r.GetCollisionPoint());
-                    resultPCD.StoreLine(r.GetCollisionPoint().x + " " + r.GetCollisionPoint().y + " " + r.GetCollisionPoint().z);
+                    //resultPCD.StoreLine(r.GetCollisionPoint().x + " " + r.GetCollisionPoint().y + " " + r.GetCollisionPoint().z);
                     //distCloud.Add(this.Translation.DistanceTo(r.GetCollisionPoint()));
                 }
                 
